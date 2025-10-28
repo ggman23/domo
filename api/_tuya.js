@@ -38,29 +38,47 @@ class TuyaAPI {
     const secret = this.clientSecret;
     const token = this.accessToken || '';
 
+    // Construire la query string si params
     const sortedParams = Object.keys(params)
       .sort()
       .map(key => `${key}=${params[key]}`)
       .join('&');
 
+    // Hash du body (SHA256 de la chaîne vide si pas de body)
+    const bodyToHash = body || '';
     const contentHash = crypto
       .createHash('sha256')
-      .update(body)
+      .update(bodyToHash, 'utf8')
       .digest('hex');
 
+    // Construire le stringToSign selon la spec Tuya
+    // Format: method + "\n" + contentHash + "\n" + headers + "\n" + url
+    const url = path + (sortedParams ? `?${sortedParams}` : '');
     const stringToSign = [
       method,
       contentHash,
-      '',
-      path + (sortedParams ? `?${sortedParams}` : ''),
+      '', // headers vides
+      url,
     ].join('\n');
 
+    // Construire la chaîne à signer
     const signStr = clientId + token + timestamp + stringToSign;
+
+    // Calculer la signature HMAC-SHA256
     const signature = crypto
       .createHmac('sha256', secret)
-      .update(signStr)
+      .update(signStr, 'utf8')
       .digest('hex')
       .toUpperCase();
+
+    console.log('🔐 Signature générée:', {
+      method,
+      path,
+      params,
+      contentHash: contentHash.substring(0, 10) + '...',
+      timestamp,
+      signature: signature.substring(0, 10) + '...',
+    });
 
     return {
       timestamp,
@@ -72,17 +90,24 @@ class TuyaAPI {
 
   async getAccessToken() {
     if (this.accessToken && this.tokenExpiry && Date.now() < this.tokenExpiry) {
+      console.log('✅ Token existant encore valide');
       return this.accessToken;
     }
 
-    const path = '/v1.0/token?grant_type=1';
+    console.log('🔑 Récupération d\'un nouveau token Tuya...');
+
+    const path = '/v1.0/token';
     const method = 'GET';
-    const signData = this.generateSignature(method, path.split('?')[0], { grant_type: '1' });
+    const params = { grant_type: 1 }; // Nombre, pas chaîne
+    const signData = this.generateSignature(method, path, params, '');
 
     try {
+      const url = this.baseUrl + path + '?grant_type=1';
+      console.log('📡 Appel Tuya:', { method, url });
+
       const response = await axios({
         method,
-        url: this.baseUrl + path,
+        url,
         headers: {
           client_id: signData.clientId,
           sign: signData.signature,
@@ -91,14 +116,23 @@ class TuyaAPI {
         },
       });
 
+      console.log('📥 Réponse Tuya:', {
+        success: response.data.success,
+        code: response.data.code,
+        msg: response.data.msg,
+      });
+
       if (response.data.success) {
         this.accessToken = response.data.result.access_token;
         this.tokenExpiry = Date.now() + (response.data.result.expire_time * 1000);
+        console.log('✅ Token obtenu avec succès');
         return this.accessToken;
       } else {
+        console.error('❌ Erreur Tuya:', response.data);
         throw new Error(response.data.msg || 'Échec de l\'authentification Tuya');
       }
     } catch (error) {
+      console.error('❌ Erreur lors de l\'appel Tuya:', error.response?.data || error.message);
       throw error;
     }
   }
@@ -110,6 +144,8 @@ class TuyaAPI {
     const signData = this.generateSignature(method, path, {}, bodyStr);
 
     try {
+      console.log(`📡 Requête Tuya: ${method} ${path}`);
+
       const response = await axios({
         method,
         url: this.baseUrl + path,
@@ -124,12 +160,20 @@ class TuyaAPI {
         data: body,
       });
 
+      console.log('📥 Réponse:', {
+        success: response.data.success,
+        code: response.data.code,
+        msg: response.data.msg,
+      });
+
       if (response.data.success) {
         return response.data.result;
       } else {
+        console.error('❌ Erreur API Tuya:', response.data);
         throw new Error(response.data.msg || 'Erreur API Tuya');
       }
     } catch (error) {
+      console.error('❌ Erreur requête:', error.response?.data || error.message);
       throw error;
     }
   }
