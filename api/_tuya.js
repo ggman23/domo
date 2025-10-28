@@ -1,12 +1,6 @@
 import crypto from 'crypto';
 import axios from 'axios';
 
-const TUYA_CONFIG = {
-  clientId: process.env.TUYA_CLIENT_ID,
-  clientSecret: process.env.TUYA_CLIENT_SECRET,
-  region: process.env.TUYA_REGION || 'eu',
-};
-
 const TUYA_ENDPOINTS = {
   eu: 'https://openapi.tuyaeu.com',
   us: 'https://openapi.tuyaus.com',
@@ -16,15 +10,32 @@ const TUYA_ENDPOINTS = {
 
 class TuyaAPI {
   constructor() {
-    this.baseUrl = TUYA_ENDPOINTS[TUYA_CONFIG.region];
+    // Lire les variables d'environnement à l'exécution, pas au chargement du module
+    this.clientId = process.env.TUYA_CLIENT_ID;
+    this.clientSecret = process.env.TUYA_CLIENT_SECRET;
+    this.region = process.env.TUYA_REGION || 'eu';
+
+    // Vérifier que les variables sont bien définies
+    if (!this.clientId || !this.clientSecret) {
+      throw new Error('Variables d\'environnement TUYA_CLIENT_ID et TUYA_CLIENT_SECRET requises');
+    }
+
+    this.baseUrl = TUYA_ENDPOINTS[this.region];
     this.accessToken = null;
     this.tokenExpiry = null;
+
+    console.log('TuyaAPI initialisé avec:', {
+      clientId: this.clientId ? `${this.clientId.substring(0, 5)}...` : 'MANQUANT',
+      clientSecret: this.clientSecret ? '***' : 'MANQUANT',
+      region: this.region,
+      baseUrl: this.baseUrl
+    });
   }
 
   generateSignature(method, path, params = {}, body = '') {
     const timestamp = Date.now().toString();
-    const clientId = TUYA_CONFIG.clientId;
-    const secret = TUYA_CONFIG.clientSecret;
+    const clientId = this.clientId;
+    const secret = this.clientSecret;
     const token = this.accessToken || '';
 
     const sortedParams = Object.keys(params)
