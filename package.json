@@ -9,7 +9,9 @@
     "dev:frontend": "cd frontend && npm run dev",
     "tunnel": "node scripts/check-tunnel.js || bash scripts/tunnel.sh",
     "tunnel:windows": "scripts\\tunnel.bat",
-    "start": "npm run dev"
+    "start": "npm run dev",
+    "build": "cd frontend && npm install && npm run build",
+    "vercel-build": "cd frontend && npm install && npm run build"
   },
   "keywords": ["domotique", "smart-home", "tuya", "smart-life"],
   "author": "",
