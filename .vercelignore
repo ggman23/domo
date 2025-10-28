@@ -1,0 +1,9 @@
+node_modules
+.git
+backend
+scripts
+*.md
+!DEPLOIEMENT_VERCEL.md
+.env
+.env.local
+*.log

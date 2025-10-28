@@ -3,7 +3,7 @@ import Header from './components/Header'
 import DeviceGrid from './components/DeviceGrid'
 import ConsumptionChart from './components/ConsumptionChart'
 import ConfigModal from './components/ConfigModal'
-import { fetchDevices, fetchDeviceStatus } from './services/api'
+import { fetchUserId, fetchDevices, fetchDeviceStatus } from './services/api'
 import './App.css'
 
 function App() {
@@ -14,19 +14,38 @@ function App() {
   const [userId, setUserId] = useState(localStorage.getItem('tuya_user_id') || '')
   const [totalConsumption, setTotalConsumption] = useState(0)
 
+  // Fonction pour récupérer automatiquement le User ID
+  const autoFetchUserId = async () => {
+    try {
+      const uid = await fetchUserId()
+      setUserId(uid)
+      localStorage.setItem('tuya_user_id', uid)
+      return uid
+    } catch (error) {
+      console.error('Impossible de récupérer automatiquement le User ID:', error)
+      return null
+    }
+  }
+
   // Fonction pour charger les appareils
   const loadDevices = async () => {
-    if (!userId) {
-      setShowConfig(true)
-      setLoading(false)
-      return
+    let currentUserId = userId
+
+    // Essayer de récupérer automatiquement le User ID si non défini
+    if (!currentUserId) {
+      currentUserId = await autoFetchUserId()
+      if (!currentUserId) {
+        setShowConfig(true)
+        setLoading(false)
+        return
+      }
     }
 
     try {
       setLoading(true)
       setError(null)
 
-      const devicesData = await fetchDevices(userId)
+      const devicesData = await fetchDevices(currentUserId)
 
       // Enrichir les appareils avec leur statut
       const enrichedDevices = await Promise.all(
