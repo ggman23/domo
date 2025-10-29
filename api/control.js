@@ -65,11 +65,17 @@ export default async function handler(req, res) {
 
     let commandsToSend = commands;
 
-    // Actions prédéfinies
+    // Actions prédéfinies - essayer switch_1 ET switch pour compatibilité
     if (action === 'on') {
-      commandsToSend = [{ code: 'switch_1', value: true }];
+      commandsToSend = [
+        { code: 'switch_1', value: true },
+        { code: 'switch', value: true }
+      ];
     } else if (action === 'off') {
-      commandsToSend = [{ code: 'switch_1', value: false }];
+      commandsToSend = [
+        { code: 'switch_1', value: false },
+        { code: 'switch', value: false }
+      ];
     }
 
     if (!commandsToSend || !Array.isArray(commandsToSend)) {
@@ -106,7 +112,11 @@ export default async function handler(req, res) {
     });
 
     if (!response.data.success) {
-      return res.status(500).json({ success: false, message: response.data.msg });
+      return res.status(500).json({
+        success: false,
+        message: response.data.msg || 'Erreur Tuya',
+        details: response.data
+      });
     }
 
     return res.status(200).json({
@@ -115,9 +125,11 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
+    console.error('Control error:', error.response?.data || error.message);
     return res.status(500).json({
       success: false,
-      message: error.message,
+      message: error.response?.data?.msg || error.message,
+      details: error.response?.data
     });
   }
 }
