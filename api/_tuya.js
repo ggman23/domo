@@ -65,15 +65,22 @@ class TuyaAPI {
       .digest('hex')
       .toUpperCase();
 
-    console.log('🔐 Signature générée:', {
+    console.log('🔐 Signature générée - DÉTAILS COMPLETS:', {
       method,
       path,
       params,
       includeToken,
       hasToken: !!token,
+      tokenLength: token ? token.length : 0,
       url,
+      urlLength: url.length,
+      contentHash,
+      stringToSign,
+      stringToSignLength: stringToSign.length,
+      signStr: signStr.substring(0, 50) + '...' + signStr.substring(signStr.length - 20),
+      signStrLength: signStr.length,
       timestamp,
-      signature: signature.substring(0, 20) + '...',
+      signature,
     });
 
     return {
@@ -198,13 +205,16 @@ class TuyaAPI {
   }
 }
 
-// Instance partagée - TEMPORAIRE: toujours créer une nouvelle instance pour debug
+// Instance partagée - RÉUTILISER la même instance
 let tuyaInstance = null;
 
 function getTuyaAPI() {
-  // TEMPORAIRE: Toujours créer une nouvelle instance pour éviter l'état corrompu
-  console.log('🔄 Création d\'une NOUVELLE instance TuyaAPI');
-  tuyaInstance = new TuyaAPI();
+  if (!tuyaInstance) {
+    console.log('🔄 Création d\'une NOUVELLE instance TuyaAPI');
+    tuyaInstance = new TuyaAPI();
+  } else {
+    console.log('♻️ Réutilisation de l\'instance TuyaAPI existante');
+  }
   return tuyaInstance;
 }
 
