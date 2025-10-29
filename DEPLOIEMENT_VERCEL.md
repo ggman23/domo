@@ -46,9 +46,11 @@ Vercel détecte automatiquement la configuration. Vérifiez :
 - Framework Preset : **Vite** (détecté automatiquement)
 - Build Command : `cd frontend && npm install && npm run build`
 - Output Directory : `frontend/dist`
-- Install Command : `npm install`
+- Install Command : `npm install --prefix ./api`
 
 **Root Directory :** Laissez `.` (racine)
+
+**IMPORTANT :** Vercel détecte automatiquement le dossier `/api` pour les serverless functions. Ne modifiez pas cette détection automatique.
 
 ### Étape 5 : Ajouter les variables d'environnement
 
@@ -157,29 +159,17 @@ Le projet contient déjà un fichier `vercel.json` configuré :
 
 ```json
 {
-  "version": 2,
-  "builds": [
-    {
-      "src": "frontend/package.json",
-      "use": "@vercel/static-build"
-    },
-    {
-      "src": "api/**/*.js",
-      "use": "@vercel/node"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "/api/$1"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/frontend/$1"
-    }
-  ]
+  "buildCommand": "cd frontend && npm install && npm run build",
+  "outputDirectory": "frontend/dist",
+  "installCommand": "npm install --prefix ./api"
 }
 ```
+
+**Pourquoi cette configuration simple ?**
+- Vercel détecte automatiquement le dossier `/api` et crée des serverless functions
+- Le `buildCommand` compile le frontend React/Vite
+- Le `outputDirectory` indique où se trouve le build du frontend
+- Le `installCommand` installe les dépendances pour les API serverless
 
 ### APIs Serverless
 

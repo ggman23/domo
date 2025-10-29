@@ -9,9 +9,11 @@ import './App.css'
 function App() {
   const [devices, setDevices] = useState([])
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState(null)
   const [showConfig, setShowConfig] = useState(false)
-  const [userId, setUserId] = useState(localStorage.getItem('tuya_user_id') || '')
+  // TEMPORAIRE: User ID en dur pour test
+  const [userId, setUserId] = useState('eu16951695278972Gsux')
   const [totalConsumption, setTotalConsumption] = useState(0)
 
   // Fonction pour récupérer automatiquement le User ID
@@ -28,21 +30,23 @@ function App() {
   }
 
   // Fonction pour charger les appareils
-  const loadDevices = async () => {
+  const loadDevices = async (silent = false) => {
     let currentUserId = userId
 
-    // Essayer de récupérer automatiquement le User ID si non défini
+    // TEMPORAIRE: User ID déjà défini en dur, pas besoin de l'auto-fetch
     if (!currentUserId) {
-      currentUserId = await autoFetchUserId()
-      if (!currentUserId) {
-        setShowConfig(true)
-        setLoading(false)
-        return
-      }
+      setShowConfig(true)
+      setLoading(false)
+      return
     }
 
     try {
-      setLoading(true)
+      // Si c'est un rafraîchissement silencieux, ne pas afficher le spinner
+      if (silent) {
+        setRefreshing(true)
+      } else {
+        setLoading(true)
+      }
       setError(null)
 
       const devicesData = await fetchDevices(currentUserId)
@@ -79,19 +83,23 @@ function App() {
 
       setTotalConsumption(total)
     } catch (err) {
-      setError(err.message || 'Erreur lors du chargement des appareils')
+      // Ne pas afficher l'erreur si c'est un rafraîchissement silencieux
+      if (!silent) {
+        setError(err.message || 'Erreur lors du chargement des appareils')
+      }
       console.error('Erreur:', err)
     } finally {
       setLoading(false)
+      setRefreshing(false)
     }
   }
 
   // Charger les appareils au démarrage
   useEffect(() => {
-    loadDevices()
+    loadDevices(false) // Chargement initial avec spinner
 
-    // Recharger toutes les 30 secondes
-    const interval = setInterval(loadDevices, 30000)
+    // Recharger toutes les 60 secondes en mode silencieux
+    const interval = setInterval(() => loadDevices(true), 60000)
     return () => clearInterval(interval)
   }, [userId])
 
@@ -110,7 +118,8 @@ function App() {
         activeDevices={devices.filter(d => d.isOnline).length}
         totalConsumption={totalConsumption}
         onConfig={() => setShowConfig(true)}
-        onRefresh={loadDevices}
+        onRefresh={() => loadDevices(false)}
+        refreshing={refreshing}
       />
 
       <main className="main-content">

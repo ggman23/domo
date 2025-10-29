@@ -1,7 +1,7 @@
 import { Settings, RefreshCw, Zap, Activity } from 'lucide-react'
 import './Header.css'
 
-function Header({ totalDevices, activeDevices, totalConsumption, onConfig, onRefresh }) {
+function Header({ totalDevices, activeDevices, totalConsumption, onConfig, onRefresh, refreshing = false }) {
   return (
     <header className="header">
       <div className="header-content">
@@ -38,7 +38,7 @@ function Header({ totalDevices, activeDevices, totalConsumption, onConfig, onRef
 
         <div className="header-actions">
           <button
-            className="header-btn"
+            className={`header-btn ${refreshing ? 'spinning' : ''}`}
             onClick={onRefresh}
             title="Actualiser"
           >
