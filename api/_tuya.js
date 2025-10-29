@@ -10,23 +10,18 @@ const TUYA_ENDPOINTS = {
 
 class TuyaAPI {
   constructor() {
-    // Lire les variables d'environnement à l'exécution, pas au chargement du module
-    this.clientId = process.env.TUYA_CLIENT_ID;
-    this.clientSecret = process.env.TUYA_CLIENT_SECRET;
-    this.region = process.env.TUYA_REGION || 'eu';
-
-    // Vérifier que les variables sont bien définies
-    if (!this.clientId || !this.clientSecret) {
-      throw new Error('Variables d\'environnement TUYA_CLIENT_ID et TUYA_CLIENT_SECRET requises');
-    }
+    // TEMPORAIRE : Credentials en dur pour test
+    this.clientId = 'ktuq7y5tgtw5433v8r4s';
+    this.clientSecret = '74c7023cc90946128ca8b6f887a4e5cb';
+    this.region = 'eu';
 
     this.baseUrl = TUYA_ENDPOINTS[this.region];
     this.accessToken = null;
     this.tokenExpiry = null;
 
-    console.log('TuyaAPI initialisé avec:', {
-      clientId: this.clientId ? `${this.clientId.substring(0, 5)}...` : 'MANQUANT',
-      clientSecret: this.clientSecret ? '***' : 'MANQUANT',
+    console.log('TuyaAPI initialisé avec credentials EN DUR:', {
+      clientId: this.clientId.substring(0, 10) + '...',
+      clientSecret: this.clientSecret.substring(0, 10) + '...',
       region: this.region,
       baseUrl: this.baseUrl
     });
@@ -199,13 +194,13 @@ class TuyaAPI {
   }
 }
 
-// Instance partagée
+// Instance partagée - TEMPORAIRE: toujours créer une nouvelle instance pour debug
 let tuyaInstance = null;
 
 function getTuyaAPI() {
-  if (!tuyaInstance) {
-    tuyaInstance = new TuyaAPI();
-  }
+  // TEMPORAIRE: Toujours créer une nouvelle instance pour éviter l'état corrompu
+  console.log('🔄 Création d\'une NOUVELLE instance TuyaAPI');
+  tuyaInstance = new TuyaAPI();
   return tuyaInstance;
 }
 
