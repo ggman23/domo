@@ -32,7 +32,7 @@ class TuyaAPI {
     });
   }
 
-  generateSignature(method, path, params = {}, body = '') {
+  generateSignature(method, path, params = {}, body = '', includeToken = true) {
     const timestamp = Date.now().toString();
     const clientId = this.clientId;
     const secret = this.clientSecret;
@@ -62,7 +62,11 @@ class TuyaAPI {
     ].join('\n');
 
     // Construire la chaîne à signer
-    const signStr = clientId + token + timestamp + stringToSign;
+    // Pour l'obtention du token: clientId + timestamp + stringToSign
+    // Pour les requêtes avec token: clientId + accessToken + timestamp + stringToSign
+    const signStr = includeToken && token
+      ? clientId + token + timestamp + stringToSign
+      : clientId + timestamp + stringToSign;
 
     // Calculer la signature HMAC-SHA256
     const signature = crypto
@@ -75,6 +79,8 @@ class TuyaAPI {
       method,
       path,
       params,
+      includeToken,
+      hasToken: !!token,
       contentHash: contentHash.substring(0, 10) + '...',
       timestamp,
       signature: signature.substring(0, 10) + '...',
@@ -99,8 +105,8 @@ class TuyaAPI {
     const path = '/v1.0/token';
     const method = 'GET';
 
-    // Pour la signature, on inclut les params
-    const signData = this.generateSignature(method, path, { grant_type: 1 }, '');
+    // Pour l'obtention du token, on n'inclut PAS le token dans la signature
+    const signData = this.generateSignature(method, path, { grant_type: 1 }, '', false);
 
     try {
       // L'URL complète pour axios
