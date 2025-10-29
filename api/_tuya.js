@@ -156,11 +156,15 @@ class TuyaAPI {
     await this.getAccessToken();
 
     const bodyStr = body ? JSON.stringify(body) : '';
-    const signData = this.generateSignature(method, path, {}, bodyStr);
+
+    // IMPORTANT: includeToken=true pour les requêtes avec token
+    const signData = this.generateSignature(method, path, {}, bodyStr, true);
+
+    console.log(`📡 Requête Tuya: ${method} ${path}`);
+    console.log(`   Token disponible: ${!!this.accessToken}`);
+    console.log(`   Token (début): ${this.accessToken ? this.accessToken.substring(0, 20) + '...' : 'N/A'}`);
 
     try {
-      console.log(`📡 Requête Tuya: ${method} ${path}`);
-
       const response = await axios({
         method,
         url: this.baseUrl + path,
