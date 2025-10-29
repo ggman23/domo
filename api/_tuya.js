@@ -178,7 +178,8 @@ class TuyaAPI {
 
     console.log(`📡 Requête Tuya: ${method} ${path}`);
     console.log(`   Token disponible: ${!!this.accessToken}`);
-    console.log(`   Token (début): ${this.accessToken ? this.accessToken.substring(0, 20) + '...' : 'N/A'}`);
+    console.log(`   Token COMPLET: "${this.accessToken}"`);
+    console.log(`   Token length: ${this.accessToken ? this.accessToken.length : 0}`);
 
     try {
       const response = await axios({
