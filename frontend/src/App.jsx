@@ -11,7 +11,8 @@ function App() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [showConfig, setShowConfig] = useState(false)
-  const [userId, setUserId] = useState(localStorage.getItem('tuya_user_id') || '')
+  // TEMPORAIRE: User ID en dur pour test
+  const [userId, setUserId] = useState('eu16951695278972Gsux')
   const [totalConsumption, setTotalConsumption] = useState(0)
 
   // Fonction pour récupérer automatiquement le User ID
@@ -31,14 +32,11 @@ function App() {
   const loadDevices = async () => {
     let currentUserId = userId
 
-    // Essayer de récupérer automatiquement le User ID si non défini
+    // TEMPORAIRE: User ID déjà défini en dur, pas besoin de l'auto-fetch
     if (!currentUserId) {
-      currentUserId = await autoFetchUserId()
-      if (!currentUserId) {
-        setShowConfig(true)
-        setLoading(false)
-        return
-      }
+      setShowConfig(true)
+      setLoading(false)
+      return
     }
 
     try {
