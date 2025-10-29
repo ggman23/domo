@@ -1,4 +1,4 @@
-// Copie EXACTE de test-with-token.js mais pour devices
+// Test de requête AVEC token (obtenir devices)
 import crypto from 'crypto';
 import axios from 'axios';
 
@@ -8,83 +8,128 @@ const CREDS = {
   baseUrl: 'https://openapi.tuyaeu.com',
 };
 
+async function getToken() {
+  const method = 'GET';
+  const path = '/v1.0/token';
+  const timestamp = Date.now().toString();
+  const queryString = 'grant_type=1';
+
+  const contentHash = crypto.createHash('sha256').update('', 'utf8').digest('hex');
+  const url = path + '?' + queryString;
+  const stringToSign = method + '\n' + contentHash + '\n' + '\n' + url;
+  const signStr = CREDS.clientId + timestamp + stringToSign;
+  const signature = crypto.createHmac('sha256', CREDS.clientSecret).update(signStr, 'utf8').digest('hex').toUpperCase();
+
+  const response = await axios({
+    method: 'GET',
+    url: CREDS.baseUrl + path + '?' + queryString,
+    headers: {
+      client_id: CREDS.clientId,
+      sign: signature,
+      t: timestamp,
+      sign_method: 'HMAC-SHA256',
+    },
+  });
+
+  return response.data.result.access_token;
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
 
-  const { userId } = req.query;
-  if (!userId) {
-    return res.status(400).json({ success: false, message: 'User ID requis' });
-  }
+  const details = {};
 
   try {
-    // ÉTAPE 1 : Obtenir le token
-    const method1 = 'GET';
-    const path1 = '/v1.0/token';
-    const timestamp1 = Date.now().toString();
-    const queryString1 = 'grant_type=1';
-    const contentHash1 = crypto.createHash('sha256').update('', 'utf8').digest('hex');
-    const url1 = path1 + '?' + queryString1;
-    const stringToSign1 = method1 + '\n' + contentHash1 + '\n' + '\n' + url1;
-    const signStr1 = CREDS.clientId + timestamp1 + stringToSign1;
-    const signature1 = crypto.createHmac('sha256', CREDS.clientSecret).update(signStr1, 'utf8').digest('hex').toUpperCase();
+    details.step1_getToken = '🔑 Obtention du token...';
+    const accessToken = await getToken();
+    details.step1_result = {
+      success: true,
+      token: accessToken.substring(0, 30) + '...',
+    };
 
-    const response1 = await axios({
+    // MAINTENANT : Requête AVEC le token pour obtenir les devices
+    const userId = 'eu16951695278972Gsux';
+    details.step2_withToken = `📱 Requête avec token pour /v1.0/users/${userId}/devices`;
+
+    const method = 'GET';
+    const path = `/v1.0/users/${userId}/devices`;
+    const timestamp = Date.now().toString();
+
+    // Pas de query params pour /v1.0/devices
+    const queryString = '';
+    const contentHash = crypto.createHash('sha256').update('', 'utf8').digest('hex');
+
+    // URL pour la signature
+    const url = path; // Pas de query string
+    const stringToSign = method + '\n' + contentHash + '\n' + '\n' + url;
+
+    // AVEC TOKEN : clientId + accessToken + timestamp + stringToSign
+    const signStr = CREDS.clientId + accessToken + timestamp + stringToSign;
+    const signature = crypto.createHmac('sha256', CREDS.clientSecret).update(signStr, 'utf8').digest('hex').toUpperCase();
+
+    details.step2_signature = {
+      method,
+      path,
+      timestamp,
+      contentHash,
+      url,
+      stringToSign,
+      signStrFormula: 'clientId + accessToken + timestamp + stringToSign',
+      signature: signature.substring(0, 30) + '...',
+    };
+
+    const response = await axios({
       method: 'GET',
-      url: CREDS.baseUrl + path1 + '?' + queryString1,
+      url: CREDS.baseUrl + path,
       headers: {
         client_id: CREDS.clientId,
-        sign: signature1,
-        t: timestamp1,
-        sign_method: 'HMAC-SHA256',
-      },
-    });
-
-    if (!response1.data.success) {
-      return res.status(500).json({ success: false, message: response1.data.msg });
-    }
-
-    const accessToken = response1.data.result.access_token;
-
-    // ÉTAPE 2 : Requête devices avec le token
-    const method2 = 'GET';
-    const path2 = `/v1.0/users/${userId}/devices`;
-    const timestamp2 = Date.now().toString();
-    const contentHash2 = crypto.createHash('sha256').update('', 'utf8').digest('hex');
-    const url2 = path2;
-    const stringToSign2 = method2 + '\n' + contentHash2 + '\n' + '\n' + url2;
-    const signStr2 = CREDS.clientId + accessToken + timestamp2 + stringToSign2;
-    const signature2 = crypto.createHmac('sha256', CREDS.clientSecret).update(signStr2, 'utf8').digest('hex').toUpperCase();
-
-    const response2 = await axios({
-      method: 'GET',
-      url: CREDS.baseUrl + path2,
-      headers: {
-        client_id: CREDS.clientId,
-        sign: signature2,
-        t: timestamp2,
+        sign: signature,
+        t: timestamp,
         sign_method: 'HMAC-SHA256',
         access_token: accessToken,
       },
     });
 
-    if (!response2.data.success) {
-      return res.status(500).json({ success: false, message: response2.data.msg });
+    details.step2_response = {
+      status: response.status,
+      success: response.data.success,
+      code: response.data.code,
+      msg: response.data.msg,
+      deviceCount: response.data.result?.length || 0,
+    };
+
+    if (response.data.success) {
+      return res.status(200).json({
+        success: true,
+        message: '✅ SUCCÈS ! Requête avec token fonctionne !',
+        details,
+        devices: response.data.result,
+      });
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: '❌ ÉCHEC avec token',
+        details,
+        error: response.data,
+      });
     }
 
-    return res.status(200).json({
-      success: true,
-      devices: response2.data.result || [],
-    });
-
   } catch (error) {
+    details.error = {
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data,
+    };
+
     return res.status(500).json({
       success: false,
-      message: error.message,
+      message: '❌ Erreur',
+      details,
+      error: error.response?.data || error.message,
     });
   }
 }
