@@ -59,12 +59,11 @@ export default async function handler(req, res) {
     const path = `/v1.0/users/${userId}/devices`;
     const timestamp = Date.now().toString();
 
-    // Paramètres de pagination pour récupérer TOUS les appareils (max 100)
-    const queryString = 'page_no=0&page_size=100';
+    // Pas de query params - l'API retourne tous les appareils par défaut
     const contentHash = crypto.createHash('sha256').update('', 'utf8').digest('hex');
 
-    // URL pour la signature AVEC query string
-    const url = path + '?' + queryString;
+    // URL pour la signature (sans query string)
+    const url = path;
     const stringToSign = method + '\n' + contentHash + '\n' + '\n' + url;
 
     // AVEC TOKEN : clientId + accessToken + timestamp + stringToSign
@@ -84,7 +83,7 @@ export default async function handler(req, res) {
 
     const response = await axios({
       method: 'GET',
-      url: CREDS.baseUrl + path + '?' + queryString,
+      url: CREDS.baseUrl + path,
       headers: {
         client_id: CREDS.clientId,
         sign: signature,
