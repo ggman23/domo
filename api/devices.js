@@ -34,6 +34,29 @@ async function getToken() {
   return response.data.result.access_token;
 }
 
+async function makeAuthenticatedRequest(accessToken, method, path, queryString = '') {
+  const timestamp = Date.now().toString();
+  const contentHash = crypto.createHash('sha256').update('', 'utf8').digest('hex');
+  const url = queryString ? path + '?' + queryString : path;
+  const stringToSign = method + '\n' + contentHash + '\n' + '\n' + url;
+  const signStr = CREDS.clientId + accessToken + timestamp + stringToSign;
+  const signature = crypto.createHmac('sha256', CREDS.clientSecret).update(signStr, 'utf8').digest('hex').toUpperCase();
+
+  const fullUrl = CREDS.baseUrl + path + (queryString ? '?' + queryString : '');
+
+  return await axios({
+    method,
+    url: fullUrl,
+    headers: {
+      client_id: CREDS.clientId,
+      sign: signature,
+      t: timestamp,
+      sign_method: 'HMAC-SHA256',
+      access_token: accessToken,
+    },
+  });
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
 
@@ -41,93 +64,66 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
-  const details = {};
-
   try {
-    details.step1_getToken = '🔑 Obtention du token...';
+    // Obtenir le token
     const accessToken = await getToken();
-    details.step1_result = {
-      success: true,
-      token: accessToken.substring(0, 30) + '...',
-    };
+    console.log('✅ Token obtenu');
 
-    // MAINTENANT : Requête AVEC le token pour obtenir les devices
     const userId = 'eu16951695278972Gsux';
-    details.step2_withToken = `📱 Requête avec token pour /v1.0/users/${userId}/devices`;
 
-    const method = 'GET';
-    const path = `/v1.0/users/${userId}/devices`;
-    const timestamp = Date.now().toString();
+    // Stratégie: Récupérer les appareils de TOUTES les maisons
+    console.log('📱 Récupération des maisons (homes)...');
+    const homesResponse = await makeAuthenticatedRequest(
+      accessToken,
+      'GET',
+      `/v1.0/users/${userId}/homes`
+    );
 
-    // Pas de query params - l'API retourne tous les appareils par défaut
-    const contentHash = crypto.createHash('sha256').update('', 'utf8').digest('hex');
+    const homes = homesResponse.data.result || [];
+    console.log(`🏠 Nombre de maisons trouvées: ${homes.length}`);
 
-    // URL pour la signature (sans query string)
-    const url = path;
-    const stringToSign = method + '\n' + contentHash + '\n' + '\n' + url;
+    // Récupérer les appareils de chaque maison
+    let allDevices = [];
 
-    // AVEC TOKEN : clientId + accessToken + timestamp + stringToSign
-    const signStr = CREDS.clientId + accessToken + timestamp + stringToSign;
-    const signature = crypto.createHmac('sha256', CREDS.clientSecret).update(signStr, 'utf8').digest('hex').toUpperCase();
+    for (const home of homes) {
+      console.log(`📍 Récupération des appareils de la maison: ${home.name} (ID: ${home.home_id})`);
 
-    details.step2_signature = {
-      method,
-      path,
-      timestamp,
-      contentHash,
-      url,
-      stringToSign,
-      signStrFormula: 'clientId + accessToken + timestamp + stringToSign',
-      signature: signature.substring(0, 30) + '...',
-    };
+      try {
+        const devicesResponse = await makeAuthenticatedRequest(
+          accessToken,
+          'GET',
+          `/v1.0/homes/${home.home_id}/devices`
+        );
 
-    const response = await axios({
-      method: 'GET',
-      url: CREDS.baseUrl + path,
-      headers: {
-        client_id: CREDS.clientId,
-        sign: signature,
-        t: timestamp,
-        sign_method: 'HMAC-SHA256',
-        access_token: accessToken,
-      },
-    });
+        const homeDevices = devicesResponse.data.result || [];
+        console.log(`  ✅ ${homeDevices.length} appareils trouvés`);
 
-    details.step2_response = {
-      status: response.status,
-      success: response.data.success,
-      code: response.data.code,
-      msg: response.data.msg,
-      deviceCount: response.data.result?.length || 0,
-    };
-
-    if (response.data.success) {
-      return res.status(200).json({
-        success: true,
-        message: '✅ SUCCÈS ! Requête avec token fonctionne !',
-        details,
-        devices: response.data.result,
-      });
-    } else {
-      return res.status(400).json({
-        success: false,
-        message: '❌ ÉCHEC avec token',
-        details,
-        error: response.data,
-      });
+        allDevices = allDevices.concat(homeDevices);
+      } catch (error) {
+        console.error(`  ❌ Erreur pour la maison ${home.name}:`, error.response?.data || error.message);
+      }
     }
 
+    // Dédupliquer par device ID (au cas où)
+    const uniqueDevices = Array.from(
+      new Map(allDevices.map(device => [device.id, device])).values()
+    );
+
+    console.log(`🎯 Total appareils uniques: ${uniqueDevices.length}`);
+
+    return res.status(200).json({
+      success: true,
+      message: `✅ ${uniqueDevices.length} appareils trouvés dans ${homes.length} maison(s)`,
+      devices: uniqueDevices,
+      homes: homes.map(h => ({ id: h.home_id, name: h.name }))
+    });
+
   } catch (error) {
-    details.error = {
-      message: error.message,
-      status: error.response?.status,
-      data: error.response?.data,
-    };
+    console.error('❌ Erreur:', error.response?.data || error.message);
 
     return res.status(500).json({
       success: false,
       message: '❌ Erreur',
-      details,
       error: error.response?.data || error.message,
     });
   }
