@@ -38,33 +38,28 @@ class TuyaAPI {
     const secret = this.clientSecret;
     const token = this.accessToken || '';
 
-    // Construire la query string si params
-    const sortedParams = Object.keys(params)
+    // Construire la query string
+    const queryString = Object.keys(params)
       .sort()
       .map(key => `${key}=${params[key]}`)
       .join('&');
 
-    // Hash du body (SHA256 de la chaîne vide si pas de body)
+    // Hash du body (SHA256)
     const bodyToHash = body || '';
     const contentHash = crypto
       .createHash('sha256')
       .update(bodyToHash, 'utf8')
       .digest('hex');
 
-    // Construire le stringToSign selon la spec Tuya
-    // Format: method + "\n" + contentHash + "\n" + headers + "\n" + url
-    const url = path + (sortedParams ? `?${sortedParams}` : '');
-    const stringToSign = [
-      method,
-      contentHash,
-      '', // headers vides
-      url,
-    ].join('\n');
+    // Construire le stringToSign EXACTEMENT comme dans debug-signature.js
+    const url = path + (queryString ? '?' + queryString : '');
+    const headers = '';
+    const stringToSign = method + '\n' + contentHash + '\n' + headers + '\n' + url;
 
     // Construire la chaîne à signer
     // Pour l'obtention du token: clientId + timestamp + stringToSign
     // Pour les requêtes avec token: clientId + accessToken + timestamp + stringToSign
-    const signStr = includeToken && token
+    const signStr = (includeToken && token)
       ? clientId + token + timestamp + stringToSign
       : clientId + timestamp + stringToSign;
 
@@ -81,9 +76,9 @@ class TuyaAPI {
       params,
       includeToken,
       hasToken: !!token,
-      contentHash: contentHash.substring(0, 10) + '...',
+      url,
       timestamp,
-      signature: signature.substring(0, 10) + '...',
+      signature: signature.substring(0, 20) + '...',
     });
 
     return {
