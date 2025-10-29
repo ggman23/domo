@@ -138,9 +138,18 @@ class TuyaAPI {
       });
 
       if (response.data.success) {
-        this.accessToken = response.data.result.access_token;
+        const receivedToken = response.data.result.access_token;
+        console.log('🔑 Token reçu de Tuya:', {
+          tokenStart: receivedToken.substring(0, 30),
+          tokenEnd: receivedToken.substring(receivedToken.length - 10),
+          tokenLength: receivedToken.length,
+          tokenType: typeof receivedToken,
+        });
+
+        this.accessToken = receivedToken;
         this.tokenExpiry = Date.now() + (response.data.result.expire_time * 1000);
-        console.log('✅ Token obtenu avec succès, expire dans', response.data.result.expire_time, 'secondes');
+        console.log('✅ Token stocké avec succès');
+        console.log('   this.accessToken length:', this.accessToken.length);
         return this.accessToken;
       } else {
         console.error('❌ Erreur Tuya:', response.data);
