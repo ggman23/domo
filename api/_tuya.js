@@ -99,6 +99,10 @@ class TuyaAPI {
 
     console.log('🔑 Récupération d\'un nouveau token Tuya...');
 
+    // IMPORTANT : Vider le token avant d'en obtenir un nouveau
+    this.accessToken = null;
+    this.tokenExpiry = null;
+
     const path = '/v1.0/token';
     const method = 'GET';
 
