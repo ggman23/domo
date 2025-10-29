@@ -52,10 +52,11 @@ export default async function handler(req, res) {
     };
 
     // MAINTENANT : Requête AVEC le token pour obtenir les devices
-    details.step2_withToken = '📱 Requête avec token pour /v1.0/devices';
+    const userId = 'eu16951695278972Gsux';
+    details.step2_withToken = `📱 Requête avec token pour /v1.0/users/${userId}/devices`;
 
     const method = 'GET';
-    const path = '/v1.0/devices';
+    const path = `/v1.0/users/${userId}/devices`;
     const timestamp = Date.now().toString();
 
     // Pas de query params pour /v1.0/devices
