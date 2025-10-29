@@ -74,8 +74,18 @@ function DeviceCard({ device, onUpdate }) {
         onUpdate()
       }, 1000)
     } catch (error) {
-      console.error('Erreur lors du contrôle de l\'appareil:', error)
-      alert('Erreur: ' + error.message)
+      console.error('❌ Erreur contrôle appareil:', {
+        device: device.name,
+        deviceId: device.id,
+        action: isOn ? 'off' : 'on',
+        error: error.response?.data || error.message
+      })
+
+      const errorDetails = error.response?.data?.details
+      const errorMsg = errorDetails?.error || error.response?.data?.message || error.message
+      const errorCode = errorDetails?.code || error.response?.data?.code
+
+      alert(`❌ Erreur: ${errorMsg}${errorCode ? `\nCode: ${errorCode}` : ''}\n\nAppareil: ${device.name}`)
     } finally {
       setLoading(false)
     }

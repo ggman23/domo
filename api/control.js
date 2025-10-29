@@ -69,12 +69,14 @@ export default async function handler(req, res) {
     if (action === 'on') {
       commandsToSend = [
         { code: 'switch_1', value: true },
-        { code: 'switch', value: true }
+        { code: 'switch', value: true },
+        { code: 'switch_led', value: true } // Pour les ampoules
       ];
     } else if (action === 'off') {
       commandsToSend = [
         { code: 'switch_1', value: false },
-        { code: 'switch', value: false }
+        { code: 'switch', value: false },
+        { code: 'switch_led', value: false } // Pour les ampoules
       ];
     }
 
@@ -84,6 +86,12 @@ export default async function handler(req, res) {
         message: 'Commandes invalides',
       });
     }
+
+    console.log('🎮 Control request:', {
+      deviceId,
+      action,
+      commands: commandsToSend
+    });
 
     // Requête pour contrôler le device
     const method = 'POST';
@@ -111,10 +119,19 @@ export default async function handler(req, res) {
       data: { commands: commandsToSend },
     });
 
+    console.log('✅ Tuya response:', {
+      success: response.data.success,
+      code: response.data.code,
+      msg: response.data.msg,
+      result: response.data.result
+    });
+
     if (!response.data.success) {
+      console.error('❌ Tuya error:', response.data);
       return res.status(500).json({
         success: false,
         message: response.data.msg || 'Erreur Tuya',
+        code: response.data.code,
         details: response.data
       });
     }
@@ -125,11 +142,23 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error('Control error:', error.response?.data || error.message);
+    console.error('❌ Control error:', {
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data
+    });
+
+    const errorMsg = error.response?.data?.msg || error.message;
+    const errorCode = error.response?.data?.code;
+
     return res.status(500).json({
       success: false,
-      message: error.response?.data?.msg || error.message,
-      details: error.response?.data
+      message: `Erreur: ${errorMsg}${errorCode ? ` (code: ${errorCode})` : ''}`,
+      details: {
+        error: errorMsg,
+        code: errorCode,
+        fullError: error.response?.data
+      }
     });
   }
 }
