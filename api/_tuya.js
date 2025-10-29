@@ -98,16 +98,27 @@ class TuyaAPI {
 
     const path = '/v1.0/token';
     const method = 'GET';
-    const params = { grant_type: 1 }; // Nombre, pas chaîne
-    const signData = this.generateSignature(method, path, params, '');
+
+    // Pour la signature, on inclut les params
+    const signData = this.generateSignature(method, path, { grant_type: 1 }, '');
 
     try {
-      const url = this.baseUrl + path + '?grant_type=1';
-      console.log('📡 Appel Tuya:', { method, url });
+      // L'URL complète pour axios
+      const fullUrl = this.baseUrl + path + '?grant_type=1';
+
+      console.log('📡 Appel Tuya:', {
+        method,
+        url: fullUrl,
+        headers: {
+          client_id: signData.clientId.substring(0, 10) + '...',
+          sign: signData.signature.substring(0, 20) + '...',
+          t: signData.timestamp,
+        }
+      });
 
       const response = await axios({
         method,
-        url,
+        url: fullUrl,
         headers: {
           client_id: signData.clientId,
           sign: signData.signature,
@@ -120,19 +131,27 @@ class TuyaAPI {
         success: response.data.success,
         code: response.data.code,
         msg: response.data.msg,
+        hasResult: !!response.data.result,
       });
 
       if (response.data.success) {
         this.accessToken = response.data.result.access_token;
         this.tokenExpiry = Date.now() + (response.data.result.expire_time * 1000);
-        console.log('✅ Token obtenu avec succès');
+        console.log('✅ Token obtenu avec succès, expire dans', response.data.result.expire_time, 'secondes');
         return this.accessToken;
       } else {
         console.error('❌ Erreur Tuya:', response.data);
         throw new Error(response.data.msg || 'Échec de l\'authentification Tuya');
       }
     } catch (error) {
-      console.error('❌ Erreur lors de l\'appel Tuya:', error.response?.data || error.message);
+      if (error.response) {
+        console.error('❌ Erreur HTTP:', {
+          status: error.response.status,
+          data: error.response.data,
+        });
+      } else {
+        console.error('❌ Erreur réseau:', error.message);
+      }
       throw error;
     }
   }
